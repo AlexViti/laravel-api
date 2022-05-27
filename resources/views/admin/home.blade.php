@@ -9,8 +9,6 @@
                 <div class="card">
                     <div class="card-header">Dashboard</div>
 
-                    @include('layouts.partials.dashNav')
-
                     <div class="card-body">
                         @if (session('status'))
                             <div class="alert alert-success" role="alert">

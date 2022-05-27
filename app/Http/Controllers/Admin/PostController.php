@@ -2,32 +2,52 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Post;
 use App\Category;
 use App\Tag;
+use App\User;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
-    protected $validationRules = [
-        'title' => 'required|max:100',
-        'slug' => "required|unique:posts|max:100",
-        'category_id' => 'required|exists:categories,id',
-        'body' => 'required',
+    use \App\Traits\searchFilters;
 
-    ];
+    private function getValidators($model) {
+        return [
+            'title' => 'required|min:3|max:255',
+            'slug' => [
+                'required',
+                'min:3',
+                'max:100',
+                Rule::unique('post')->ignore($model)
+            ],
+            'body' => 'required|min:3',
+            'category_id' => 'required|exists:categories,id',
+            'user_id' => 'required|exists:users,id',
+            'tags' => 'required|exists:tags,id'
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $posts = Post::paginate(10);
+        $postsQuery = $this->composeQuery($request);
+        $posts = $postsQuery->paginate(20);
 
-        return view('admin.posts.index', compact('posts'));
+        return view('admin.posts.index', [
+            'posts' => $posts,
+            'categories' => Category::all(),
+            'users' => User::all(),
+            'request' => $request
+        ]);
     }
 
     /**
@@ -38,7 +58,12 @@ class PostController extends Controller
     public function create()
     {
         $categories = Category::all();
-        return view('admin.posts.create', compact('categories'));
+        $tags = Tag::all();
+
+        return view('admin.posts.create', [
+            'categories' => $categories,
+            'tags' => $tags
+        ]);
     }
 
     /**
@@ -49,7 +74,7 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        $this->validate($request, $this->validationRules);
+        $request->validate($this->getValidators(null));
 
         $formData = $request->all() + ['user_id' => auth()->id()];
         $tags = explode(' ', $formData['tags']);
@@ -87,10 +112,16 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        if (auth()->id() !== $post->user_id) {
-            abort(403);
-        }
-        return view('admin.posts.edit', compact('post'));
+        if (auth()->id() !== $post->user_id) abort(403);
+
+        $categories = Category::all();
+        $tags = Tag::all();
+
+        return view('admin.posts.edit', [
+            'post' => $post,
+            'categories' => $categories,
+            'tags' => $tags
+        ]);
     }
 
     /**
@@ -102,12 +133,13 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        if(auth()->id() !== $post->user_id) {
-            abort(403);
-        }
-        $validationRules['slug'] = 'required|max:100|unique:posts,slug,' . $post->id;
-        $this->validate($request, $this->validationRules);
+        if(auth()->id() !== $post->user_id) abort(403);
+
+        $request->validate($this->getValidators($post));
+
         $post->update($request->all());
+        $post->tags()->sync($request->tags);
+
         return redirect()->route('admin.posts.edit', $post->slug)->with('status', 'Your post has been updated');
     }
 
@@ -135,7 +167,7 @@ class PostController extends Controller
 
     public function myindex()
     {
-        $posts = Post::where('user_id', auth()->id())->paginate(10);
+        $posts = Post::where('user_id', auth()->id())->paginate(25);
         return view('admin.posts.index', compact('posts'));
     }
 }

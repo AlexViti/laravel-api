@@ -9,6 +9,7 @@ class UserInfo extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'user_id',
         'first_name',
         'last_name',
         'phone',

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('home');
 })->name('home');
 
 Auth::routes();
@@ -32,4 +32,4 @@ Route::middleware('auth')
         Route::resource('/categories', 'CategoryController');
     });
 
-Route::view("{any?}", 'welcome')->where("any", ".*");
+// Route::view("{any?}", 'home')->where("any", ".*");
