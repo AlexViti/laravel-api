@@ -36,7 +36,8 @@ const router = new VueRouter({
         {
             path: '/blog/:slug',
             name: 'blog-post',
-            component: BlogPost
+            component: BlogPost,
+            props: true
         },
         {
             path: '*',
